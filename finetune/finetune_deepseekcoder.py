@@ -115,17 +115,16 @@ def train_tokenize_function(examples, tokenizer):
         for instruction in examples['instruction']
     ]
     targets = [f"{output}\n{EOT_TOKEN}" for output in examples['output']]
-    data_dict = preprocess(sources, targets, tokenizer)
-    return data_dict
+    return preprocess(sources, targets, tokenizer)
 
 def train():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    
+
     if training_args.local_rank == 0:
         print('='*100)
         print(training_args)
-    
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         model_max_length=training_args.model_max_length,
@@ -139,7 +138,7 @@ def train():
     print("EOS Token", tokenizer.eos_token, tokenizer.eos_token_id)
 
     if training_args.local_rank == 0:
-        print("Load tokenizer from {} over.".format(model_args.model_name_or_path))
+        print(f"Load tokenizer from {model_args.model_name_or_path} over.")
 
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -147,7 +146,7 @@ def train():
     )
 
     if training_args.local_rank == 0:
-        print("Load model from {} over.".format(model_args.model_name_or_path))
+        print(f"Load model from {model_args.model_name_or_path} over.")
 
 
     raw_train_datasets = load_dataset(
@@ -158,7 +157,7 @@ def train():
     )
     if training_args.local_rank > 0: 
         torch.distributed.barrier()
-        
+
     train_dataset = raw_train_datasets.map(
         train_tokenize_function,
         batched=True,
@@ -172,7 +171,7 @@ def train():
 
     if training_args.local_rank == 0:
         torch.distributed.barrier()
-    
+
     if training_args.local_rank == 0:
         print("Training dataset samples:", len(train_dataset))
         for index in random.sample(range(len(train_dataset)), 3):

@@ -41,12 +41,13 @@ def math_equal(prediction: Union[bool, float, str],
                 gt_result = [reference]
             for item in gt_result:
                 try:
-                    if is_close:
-                        if isclose(item, prediction, rel_tol=1e-4):
-                            return True
-                    else:
-                        if item == prediction:
-                            return True
+                    if (
+                        is_close
+                        and isclose(item, prediction, rel_tol=1e-4)
+                        or not is_close
+                        and item == prediction
+                    ):
+                        return True
                 except Exception:
                     continue
             return False
@@ -78,18 +79,21 @@ def math_equal(prediction: Union[bool, float, str],
         pred_parts = prediction[1:-1].split(",")
         ref_parts = reference[1:-1].split(",")
         if len(pred_parts) == len(ref_parts):
-            if all([math_equal(pred_parts[i], ref_parts[i], include_percentage, is_close) for i in range(len(pred_parts))]):
+            if all(
+                math_equal(
+                    pred_parts[i], ref_parts[i], include_percentage, is_close
+                )
+                for i in range(len(pred_parts))
+            ):
                 return True
 
     # symbolic equal with sympy
-    if timeout:
-        if call_with_timeout(symbolic_equal_process, prediction, reference):
-            return True
-    else:
-        if symbolic_equal(prediction, reference):
-            return True
-
-    return False
+    return bool(
+        timeout
+        and call_with_timeout(symbolic_equal_process, prediction, reference)
+        or not timeout
+        and symbolic_equal(prediction, reference)
+    )
 
 
 def math_equal_process(param):

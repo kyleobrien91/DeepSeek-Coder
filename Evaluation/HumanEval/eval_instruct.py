@@ -54,7 +54,7 @@ def generate_main(args):
 
     print("model", model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    print("load tokenizer {} from {} over.".format(tokenizer.__class__, model_name_or_path))
+    print(f"load tokenizer {tokenizer.__class__} from {model_name_or_path} over.")
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
         torch_dtype=torch.bfloat16,
@@ -63,7 +63,7 @@ def generate_main(args):
     )
     model.eval()
     examples = [json.loads(x) for x in open(problem_file) if x.strip()]
-    print("Read {} examples for evaluation over.".format(len(examples)))
+    print(f"Read {len(examples)} examples for evaluation over.")
 
     generated_examples = []
     for ex in tqdm(examples, desc='Generating'):
@@ -74,8 +74,10 @@ def generate_main(args):
     with open(saved_path, 'w', encoding='utf-8') as fw:
         for ex in generated_examples:
             fw.write(json.dumps(ex) + '\n')
-        print("Save {} processed examples into {} over!".format(len(generated_examples), saved_path))
-    
+        print(
+            f"Save {len(generated_examples)} processed examples into {saved_path} over!"
+        )
+
     result = evaluate_functional_correctness(
         input_file=saved_path,
         tmp_dir=temp_dir,
@@ -85,12 +87,13 @@ def generate_main(args):
         language=lang
     )
     print(lang, result, model_name_or_path)
-    pass
 
 def evaluation_only(args):
     lang = args.language
     temp_dir = args.temp_dir
-    assert os.path.exists(args.output_path), "Not fond output file: {}".format(args.output_path)
+    assert os.path.exists(
+        args.output_path
+    ), f"Not fond output file: {args.output_path}"
     os.makedirs(temp_dir, exist_ok=True)
 
     output_name = os.path.basename(args.output_path)
@@ -101,7 +104,9 @@ def evaluation_only(args):
     with open(processed_path, 'w', encoding='utf-8') as fw:
         for ex in processed_examples:
             fw.write(json.dumps(ex) + '\n')
-        print("Save {} processed examples into {} over!".format(len(processed_examples), processed_path))
+        print(
+            f"Save {len(processed_examples)} processed examples into {processed_path} over!"
+        )
 
     problem_file = os.path.join(data_abs_dir, f"humaneval-{lang}.jsonl")
     from human_eval.evaluation import evaluate_functional_correctness
@@ -125,4 +130,3 @@ if __name__ == '__main__':
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     generate_main(args)
-    pass

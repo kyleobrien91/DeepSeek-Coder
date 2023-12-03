@@ -22,17 +22,16 @@ def _fix_fracs(string):
                 a = substr[0]
                 b = substr[1]
                 if b != "{":
-                    if len(substr) > 2:
-                        post_substr = substr[2:]
-                        new_str += "{" + a + "}{" + b + "}" + post_substr
-                    else:
-                        new_str += "{" + a + "}{" + b + "}"
+                    new_str += (
+                        "{" + a + "}{" + b + "}" + substr[2:]
+                        if len(substr) > 2
+                        else "{" + a + "}{" + b + "}"
+                    )
+                elif len(substr) > 2:
+                    post_substr = substr[2:]
+                    new_str += "{" + a + "}" + b + post_substr
                 else:
-                    if len(substr) > 2:
-                        post_substr = substr[2:]
-                        new_str += "{" + a + "}" + b + post_substr
-                    else:
-                        new_str += "{" + a + "}" + b
+                    new_str += "{" + a + "}" + b
     string = new_str
     return string
 
@@ -47,16 +46,14 @@ def _fix_a_slash_b(string):
             a = int(a)
         if "sqrt" not in b:
             b = int(b)
-        assert string == "{}/{}".format(a, b)
-        new_string = "\\frac{" + str(a) + "}{" + str(b) + "}"
-        return new_string
+        assert string == f"{a}/{b}"
+        return "\\frac{" + str(a) + "}{" + str(b) + "}"
     except:
         return string
 
 
 def _fix_sqrt(string):
-    _string = re.sub(r"\\sqrt(\w+)", r"\\sqrt{\1}", string)
-    return _string
+    return re.sub(r"\\sqrt(\w+)", r"\\sqrt{\1}", string)
 
 
 def strip_string(string):
@@ -85,7 +82,7 @@ def strip_string(string):
 
     # Remove unit: miles, dollars if after is not none
     _string = re.sub(r"\\text{.*?}$", "", string).strip()
-    if _string != "" and _string != string:
+    if _string not in ["", string]:
         # print("Warning: unit not removed: '{}' -> '{}'".format(string, _string))
         string = _string
 
@@ -128,7 +125,7 @@ def strip_string(string):
     # quote
     string.replace("'", "")
     string.replace("\"", "")
-    
+
     # i, j
     if "j" in string and "i" not in string:
         string = string.replace("j", "i")
@@ -141,7 +138,7 @@ def strip_string(string):
     if len(string) == 0:
         return string
     if string[0] == ".":
-        string = "0" + string
+        string = f"0{string}"
 
     # to consider: get rid of e.g. "k = " or "q = " at beginning
     if len(string.split("=")) == 2:
@@ -168,15 +165,12 @@ def extract_answer(pred_str):
             stack = 1
             a = ''
             for c in ans[1:]:
-                if (c == '{'):
+                if c == '{':
                     stack += 1
-                    a += c
-                elif (c == '}'):
+                elif c == '}':
                     stack -= 1
                     if (stack == 0): break
-                    a += c
-                else:
-                    a += c
+                a += c
         else:
             a = ans.split('$')[0].strip()
         pred=a
@@ -188,10 +182,7 @@ def extract_answer(pred_str):
     else: # use the last number
         pattern = '-?\d*\.?\d+'
         pred = re.findall(pattern, pred_str.replace(",", ""))
-        if(len(pred) >= 1):
-            pred = pred[-1]
-        else: pred = ''
-    
+        pred = pred[-1] if (len(pred) >= 1) else ''
     # multiple line
     pred = pred.split("\n")[0]
     if pred != "" and pred[0] == ":":
@@ -234,8 +225,7 @@ def extract_program_output(pred_str):
         pred_str = pred_str.split('```output')[-1]
     if '```' in pred_str:
         pred_str = pred_str.split('```')[0]
-    output = pred_str.strip()
-    return output
+    return pred_str.strip()
 
 
 def parse_ground_truth(example: Dict[str, Any], data_name):
@@ -286,7 +276,7 @@ def parse_question(example, data_name):
     elif data_name == "svamp":
         body = example["Body"].strip()
         if not body.endswith("."):
-            body = body + "."
+            body = f"{body}."
         question = f'{body} {example["Question"].strip()}'
     elif data_name == "tabmwp":
         title_str = f'regarding "{example["table_title"]}" ' if example['table_title'] else ""

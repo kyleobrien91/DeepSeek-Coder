@@ -17,8 +17,7 @@ class HumanEvalDataset:
         tmp = self.get_qa_only_data(self.data, issft)
         self.clean_data = []
         for i in range(len(tmp)):
-            for j in range(sample_num):
-                self.clean_data.append(tmp[i])
+            self.clean_data.extend(tmp[i] for _ in range(sample_num))
         self.stopwords = self.clean_data[0]["stopwords"]
         np.random.seed(1234)
         print(f"Read HumanEval from {root}, number of samples {len(self.clean_data)}")
@@ -33,17 +32,10 @@ class HumanEvalDataset:
         for line in data_json:
             line = json.loads(line)
             prompt = line["prompt"].strip()
-            if "prefix" in line:
-                origin_prompt = line["prefix"]
-            else:
-                origin_prompt = line["prompt"]
-
+            origin_prompt = line["prefix"] if "prefix" in line else line["prompt"]
             if sft:
                 prompt = f"""Below is an instruction that describes a task, paired with an input that provides further context.\nWrite a response that appropriately completes the request.\n\n### Instruction:\nWrite a program to perform the given task.\n\nInput:\n{prompt}\n\n### Response:\n"""
-            if "stop_tokens" in line:
-                s = line["stop_tokens"]
-            else:
-                s = []
+            s = line["stop_tokens"] if "stop_tokens" in line else []
             ans.append({"prompt":prompt, "task_id":line["task_id"], "original_prompt": origin_prompt, "stopwords":s})
         return ans
 
@@ -57,5 +49,4 @@ class HumanEvalDataset:
         """
         return the sample at index
         """
-        sample = self.clean_data[index]
-        return sample
+        return self.clean_data[index]

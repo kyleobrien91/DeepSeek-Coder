@@ -17,8 +17,7 @@ def extract_python_block_with_solution(text):
     :return: The extracted code block.
     """
     pattern = r'```python\n(.*?)def solution\(\):\n(.*?)```'
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
+    if match := re.search(pattern, text, re.DOTALL):
         return match.group(1) + 'def solution():\n' + match.group(2)
     else:
         return ""
@@ -80,7 +79,7 @@ def inference(args):
 
     #samples = samples[:32]
     print("dataset:", args.data_name, "samples:", len(samples))
-    if len(samples) > 0:
+    if samples:
         print("=" * 50)
         print("sample:", samples[0]['prompt'])
         print("=" * 50)
@@ -90,7 +89,7 @@ def inference(args):
     for x in stop_words:
         ids = tokenizer.encode(x)
         if tokenizer.decode(ids[-1:]) == x:
-            stop_ids.append(ids[-1])               
+            stop_ids.append(ids[-1])
     print("stop ids:", stop_ids)
 
 
@@ -99,9 +98,12 @@ def inference(args):
     generation_config = GenerationConfig(num_beams=1,)
     for i in range(0, len(samples), args.batch_size):
         chunk = [x["prompt"] for x in samples[i:i+args.batch_size]]
-        if "llama" in args.model_name_or_path.lower() and args.rank==3 and (i==164 or i==328):
-            for x in chunk:
-                outputs.append(x)
+        if (
+            "llama" in args.model_name_or_path.lower()
+            and args.rank == 3
+            and i in [164, 328]
+        ):
+            outputs.extend(iter(chunk))
             continue
         inputs = tokenizer(chunk, return_tensors="pt",padding=True)
         input_ids = inputs["input_ids"].cuda()[:,-args.max_context_length:]
@@ -161,7 +163,7 @@ def eval(args):
     """
     # load data
     samples = []
-    for rank in range(args.world_size):
+    for _ in range(args.world_size):
         out_file = f"outputs/{args.model_name}/{args.data_name}/world_size_{args.world_size}_rank_{args.rank}.json"
         if not os.path.exists(out_file):
             raise FileNotFoundError(f"File {out_file} does not exist.")
@@ -169,9 +171,7 @@ def eval(args):
     print("Dataset:",args.data_name)
     print("Model:",args.model_name)
     print("Loaded Examples:",len(samples))
-    scores = []
-    for x in samples:
-        scores.append(math_equal(x["gt"],x["pred"]))
+    scores = [math_equal(x["gt"],x["pred"]) for x in samples]
     print("Mean Score",np.mean(scores))
 
 

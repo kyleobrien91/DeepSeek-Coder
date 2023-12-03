@@ -57,7 +57,7 @@ def convert_for_evaluation(example):
         code_block: str = re.findall(f'```python\n(.*?)```', gpt_completion, re.DOTALL | re.IGNORECASE)[0]
         generation = code_block
     except Exception as ex:
-        print("Failed to extract codeblock:\n{}".format(gpt_completion))
+        print(f"Failed to extract codeblock:\n{gpt_completion}")
 
     example['generation'] = generation
     return example
@@ -91,11 +91,11 @@ def generate_main(args):
     saved_path = args.output_path
     temp_dir = args.temp_dir
     os.makedirs(temp_dir, exist_ok=True)
-    problem_file = os.path.join(data_abs_dir, f"mbpp.jsonl")
+    problem_file = os.path.join(data_abs_dir, "mbpp.jsonl")
 
     print("model", model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    print("load tokenizer {} from {} over.".format(tokenizer.__class__, model_name_or_path))
+    print(f"load tokenizer {tokenizer.__class__} from {model_name_or_path} over.")
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
         torch_dtype=torch.bfloat16,
@@ -104,29 +104,30 @@ def generate_main(args):
     model.eval()
 
     examples = list(read_test_examples(problem_file))
-    print("Read {} examples for evaluation over.".format(len(examples)))
+    print(f"Read {len(examples)} examples for evaluation over.")
 
     generated_examples = []
     for ex in tqdm(examples, desc='Generating'):
         gen_example = generate_one(ex, tokenizer, model)
         generated_examples.append(gen_example)
-        print("Generate {}/{} over...".format(len(generated_examples), len(examples)))
+        print(f"Generate {len(generated_examples)}/{len(examples)} over...")
 
     print("Generate all over!!!")
     with open(saved_path, 'w', encoding='utf-8') as fw:
         for ex in generated_examples:
             fw.write(json.dumps(ex) + '\n')
-        print("Save {} processed examples into {} over!".format(len(generated_examples), saved_path))
-    
+        print(
+            f"Save {len(generated_examples)} processed examples into {saved_path} over!"
+        )
+
     result = evaluate_functional_correctness(
         input_file=saved_path,
         tmp_dir=temp_dir,
-        problem_file=os.path.join(data_abs_dir, f"mbpp_test.jsonl"),
+        problem_file=os.path.join(data_abs_dir, "mbpp_test.jsonl"),
         language='python',
-        is_mbpp=True
+        is_mbpp=True,
     )
     print(result, model_name_or_path)
-    pass
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -137,4 +138,3 @@ if __name__ == '__main__':
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     generate_main(args)
-    pass

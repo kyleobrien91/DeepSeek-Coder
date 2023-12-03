@@ -78,15 +78,13 @@ def read_dataset(
     """
     if num_shot is not None:
         print(f"{num_shot}-shot setting...")
-    if "humaneval" in dataset_type.lower():
-        if data_file is None:
-            current_path = os.path.dirname(os.path.abspath(__file__))
-            data_file = os.path.join(current_path, "..", "humaneval-x", "python", "data", "humaneval_python.jsonl.gz")
-        dataset = {task["task_id"]: task for task in stream_jsonl(data_file)}
-    else:
+    if "humaneval" not in dataset_type.lower():
         raise f"Dataset: {dataset_type} not supported."
 
-    return dataset
+    if data_file is None:
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        data_file = os.path.join(current_path, "..", "humaneval-x", "python", "data", "humaneval_python.jsonl.gz")
+    return {task["task_id"]: task for task in stream_jsonl(data_file)}
 
 def estimate_pass_at_k(
         num_samples: Union[int, List[int], np.ndarray],
@@ -133,17 +131,14 @@ def process_humaneval_test(sample, problems, example_test=False, is_mbpp=False, 
         test_setup = "\n".join(IMPORT_HELPER["python"]) + "\n"
         test_string = test_setup + code + "\n" + test + "\n"
     elif language == "cpp":
-        test_set_up = ""
-        for s in IMPORT_HELPER["cpp"]:
-            if s not in prompt:
-                test_set_up += s + "\n"
+        test_set_up = "".join(
+            s + "\n" for s in IMPORT_HELPER["cpp"] if s not in prompt
+        )
         test_string = test_set_up + "\n" + code + "\n" + test
     elif language == "java":
         test_string = code + "\n" + test
     elif language == "cs":
-        test_set_up = ""
-        for s in IMPORT_HELPER["cs"]:
-            test_set_up += s + "\n"
+        test_set_up = "".join(s + "\n" for s in IMPORT_HELPER["cs"])
         test_string = test_set_up + "\n" + code + "\n" + test
     elif language in ["js", "javascript", "ts", "sh", "go"]:
         test_string = code + "\n" + test
@@ -159,7 +154,7 @@ def process_humaneval_test(sample, problems, example_test=False, is_mbpp=False, 
         for pkg in IMPORT_HELPER["go"]:
             if pkg not in test_setup:
                 p = pkg.split("/")[-1]
-                if p + "." in code:
+                if f"{p}." in code:
                     other_pkgs.append(f"\"{pkg}\"")
         if other_pkgs:
             import_other_pkgs = "import (\n" + "    ".join([p + "\n" for p in other_pkgs]) + ")"
@@ -181,14 +176,13 @@ def stream_jsonl_all(filename: str) -> Iterable[Dict]:
     """
     Streams a JSONL file.
     """
-    results = []
     if filename.endswith(".gz"):
         fp = gzip.open(open(filename, "rb"), "rt")
     else:
         fp = open(filename, "r")
-    for line in fp:
-        if any(not x.isspace() for x in line):
-            results.append(json.loads(line))
+    results = [
+        json.loads(line) for line in fp if any(not x.isspace() for x in line)
+    ]
     fp.close()
 
     return results
@@ -248,8 +242,8 @@ def evaluate_functional_correctness(
                 task_id = sample["task_id"]
                 if not is_mbpp:
                     lang = language
-                if not is_mbpp and lang == "javascript":
-                    lang = "js"
+                    if lang == "javascript":
+                        lang = "js"
                 if is_mbpp:
                     lang = "python"
                 tmp_dir_ = os.path.join(tmp_dir, lang, "evaluation")
@@ -267,11 +261,7 @@ def evaluate_functional_correctness(
                 completion_id[task_id] += 1
                 n_samples += 1
 
-        if len(completion_id) == len(problems):
-            evaluate_pass_at_k = True
-        else:
-            evaluate_pass_at_k = False
-
+        evaluate_pass_at_k = len(completion_id) == len(problems)
         print("Running test suites...")
         for future in tqdm(as_completed(futures), total=len(futures)):
             result = future.result()
