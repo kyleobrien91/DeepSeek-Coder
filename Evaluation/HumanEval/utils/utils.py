@@ -62,13 +62,13 @@ def extract_generation_code(example: str, lang_code: str, verbose: bool=False):
     try:
         code_block: str = re.findall(f'```{lang.lower()}\n(.*?)```', output, re.DOTALL | re.IGNORECASE)[0]
         if verbose:
-            print(">>> Task: {}\n{}".format(task_id, code_block))
-        
+            print(f">>> Task: {task_id}\n{code_block}")
+
         # Remove main
         if setting.get('main', None) and setting['main'] in code_block:
             main_start = code_block.index(setting['main'])
             code_block = code_block[:main_start]
-        
+
         func_name, func_prefix = get_function_name(question, lang)
 
         try:
@@ -76,7 +76,7 @@ def extract_generation_code(example: str, lang_code: str, verbose: bool=False):
             indent = 0
             while start - indent >= 0 and code_block[start - indent-1] == ' ':
                 indent += 1
-            
+
             try:
                 end = code_block.rindex('\n' + ' '*indent + '}')
             except:
@@ -90,18 +90,18 @@ def extract_generation_code(example: str, lang_code: str, verbose: bool=False):
 
         body = code_block[start:end]
 
-        if lang_code.lower() in ['php', 'ts', 'js']:
+        if lang_code.lower() in {'php', 'ts', 'js'}:
             body += '\n' + ' '*indent + '}'
-    
+
         generation = func_prefix + '\n' + body + '\n'
         example['generation'] = generation
 
     except Exception as ex:
-        print("Failed to extract code block with error `{}`:\n>>> Task: {}\n>>> Output:\n{}".format(
-            ex, task_id, output
-        ))
+        print(
+            f"Failed to extract code block with error `{ex}`:\n>>> Task: {task_id}\n>>> Output:\n{output}"
+        )
         example['generation'] = example['prompt'] + '\n' + output
-    
+
     return example
 
 def cleanup_code(

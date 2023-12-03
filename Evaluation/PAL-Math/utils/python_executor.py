@@ -154,14 +154,16 @@ class PythonExecutor:
                     exit()
                 if progress_bar is not None:
                     progress_bar.update(1) 
-            
+
             if progress_bar is not None:
                 progress_bar.close() 
 
-        batch_results = []
-        for code, (result, exec_info) in zip(all_code_snippets, all_exec_results):
-            batch_results.append((result, exec_info))
-        return batch_results
+        return [
+            (result, exec_info)
+            for code, (result, exec_info) in zip(
+                all_code_snippets, all_exec_results
+            )
+        ]
 
 
 def _test():
